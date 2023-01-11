@@ -1,0 +1,339 @@
+#include <iostream>
+#include <fstream>
+#include <string>
+using namespace std;
+
+// Тема: #6 Заказы клининговой компании 
+
+// Задание:
+// Создать программу по управлению объектами данных по указанной теме с  использованием ООП и реализовывать изученные паттерны.
+// Необходимо создать минимум 3 объекта сущности разных видов и указать взаимодействие между объектами.Реализовать интерфейсы ввод,
+// вывода и редактитрвоания сущьностей.Реализовать ручной ввод сущностей, загрузку из файла и сохранения в файл, удаление выбранных сущностей.
+// Данные между запусками программы хранить в структурированном текстовом файле.
+
+
+// Генератор случайных чисел для создания id заказа
+int GetRandomNumber(int min, int max)
+{
+    srand(time(NULL));
+    int num = min + rand() % (max - min + 1);
+    return num;
+}
+
+// Услуга
+class Product {
+protected:
+    string name;
+    int area, date;
+public:
+    Product() { name = "\t"; area = 0; date = 0; }   // конструктор услуг (присваивает значения по умолчанию)
+    void create(const string n, const int d, const int a) { name = n; date = d; area = a; }  // присваиваются конкретные значения переменным
+    // функции возвращающие значения переменных
+    string getName() { return name; }
+    int getDate() { return date; }
+    int getArea() { return area; }
+};
+
+// Фабрика услуг
+class fabrikaOr {
+public:
+    Product* create(string* mas) {  // создается услуга с заданными параметрами
+        Product* res = new Product;
+        res->create(mas[0], stoi(mas[1]), stoi(mas[2]));
+        return res;
+    }
+};
+
+// Заказ
+class Order {
+protected:
+    fabrikaOr store;
+    int id = GetRandomNumber(10000, 99999); // id заказа (пятизначное число)
+    int countItems = 0;
+    Product* items[100] = {};
+    string name, phone;
+
+public:
+    // функции возвращающие значения переменных
+    int getID() { return id; }
+    int getCount() { return countItems; }
+    Product** getItems() { return items; }
+    string getName() { return name; }
+    string getPhone() { return phone; }
+
+    // присваивает значения имени и номера телефона клиента
+    void create(const string n, const string ph, const int count, string(*ms)[3], const int id_in) {
+        if (id_in != 0) id = id_in;
+        name = n;
+        phone = ph;
+        for (int i = 0; i < count; i++) {
+            items[i] = store.create(ms[i]);
+            countItems++;
+        }
+    }
+
+    // выводит информацию о заказе и о каждой услуге в нем
+    void printOrder() {
+        cout << "#id " << id << endl;
+        cout << "Имя заказчика: " << name << endl;
+        cout << "Телефон заказчика: " << phone << endl;
+        for (int i = 0; i < countItems; i++) {
+            cout << "|Название: " << items[i]->getName() << " | Площадь: " << items[i]->getArea() << " | Дата: " << items[i]->getDate() << '|' << endl;
+        }
+    }
+};
+
+//Фабрика заказов
+class fabrika {
+public:
+    // создает заказ с заданными параметрами и возвращает его
+    Order* create(const string n, const string ph, const int count, string(*ms)[3], const int id) {
+        Order* res = new Order;
+        res->create(n, ph, count, ms, id);
+        return res;
+    }
+};
+
+// Внутреннее управление заказами
+class management {
+private:
+    fabrika store;
+    Order* orders[100] = {};
+    int countOrders = 0; // настоящее количество элементов массива
+
+public:
+    // функции возвращающие количество заказов и сам массив заказов
+    int getCount() { return countOrders; }
+    Order** getOrders() { return orders; }
+
+    // вывод всех заказов
+    void printOrders() {
+        for (int i = 0; i < countOrders; i++) {
+            cout << '[' << i + 1 << "] ";
+            orders[i]->printOrder();
+        }
+    }
+    // вывод одного заказа по индексу
+    void printOneOrder(const int ind) {
+        cout << '[' << ind + 1 << "] ";
+        orders[ind]->printOrder();
+    }
+    // вызов создания нового заказа
+    void newOrder(const string n, const string ph, const int count, string(*ms)[3], const int id, const int edit) {
+        // если edit равен 0, то создается новый заказ в конце списка
+        if (edit == 0) {
+            orders[countOrders] = store.create(n, ph, count, ms, id);
+            countOrders++;
+        }
+        else
+        {
+            // если edit равен отличному от 0 значению, то производится перезапись заказа
+            orders[edit - 1] = store.create(n, ph, count, ms, id);
+        }
+    }
+    // удаляет заказ по индексу путем сдвига части массива на одну ячейку и уменьшения его размера
+    void delOrder(const int ind) {
+        if ((ind >= 0) && (ind < countOrders)) {
+            for (int i = ind; i < countOrders - 1; i++) { orders[i] = orders[i + 1]; }
+            countOrders--;
+        }
+    }
+};
+
+// Меню
+class mMenu {
+private:
+    int choice = 0;
+    int kg = 0;
+    management* Manager = new management;
+
+    // Главное меню
+    void mainMenu(void) {
+        system("cls");
+        cout << "~~~ Главное меню ~~~\n";
+        cout << "(вводить только цифры и латиницу)\n\n";
+        cout << "|1| Показать все заказы\n";
+        cout << "|2| Создать новый заказ\n";
+        cout << "|3| Удалить заказ\n";
+        cout << "|4| Экспортировать в файл\n";
+        cout << "|5| Импортировать из файла\n";
+        cout << "|0| Выйти из программы\n";
+        cout << "\nВыберите действие: ";
+        cin >> choice;
+    }
+
+    // Вывод всех заказов в консоль
+    void print(void) {
+        system("cls");
+        Manager->printOrders();
+    }
+
+    // Вывод одного заказа в консоль
+    void printOne(const int ind) {
+        system("cls");
+        Manager->printOneOrder(ind);
+    }
+
+    // Создание нового заказа
+    void newOrderMenu(void) {
+        string a, name, phone;
+        string mas[100][3];
+        system("cls");
+        cout << "Введите имя заказчика: ";
+        getline(cin >> ws, name);
+        cout << "Введите номер телефона: ";
+        getline(cin >> ws, phone);
+        cout << "Введите количество комнат для клининга: ";
+        getline(cin >> ws, a);
+        for (int i = 0; i < stoi(a); i++) {
+            cout << "\nНазвание или номер комнаты: ";
+            getline(cin >> ws, mas[i][0]);
+            cout << "Площадь комнаты: ";
+            getline(cin >> ws, mas[i][2]);
+            cout << "Дата уборки (без разделителей): ";
+            getline(cin >> ws, mas[i][1]);
+        }
+        Manager->newOrder(name, phone, stoi(a), mas, 0, 0);
+
+        cout << "Выполнено!\n";
+        cout << "Введите 0, чтобы продолжить: ";
+        cin >> kg;
+    }
+
+    // Удаление заказа из базы
+    void delOrderMenu(void) {
+        string a;
+        system("cls");
+        cout << "Меню удаления заказа\n\n";
+        cout << "[0] Назад\n";
+        Manager->printOrders();
+        cout << "Выберите заказ: ";
+        getline(cin >> ws, a);
+        Manager->delOrder(stoi(a) - 1);
+        system("cls");
+        cout << "Выполнено!" << endl;
+        cout << "Введите 0, чтобы продолжить:";
+        cin >> kg;
+    }
+
+    // Сохранение данных в файл "data.txt"
+    void saveToFile(const string path) {
+        ofstream fout;
+        fout.open(path);
+
+        // проверка открытия файла
+        if (!fout.is_open()) {
+            cout << "File opening error!" << endl;
+        }
+        else {
+            Order** ord = Manager->getOrders();
+            fout << Manager->getCount() << '\n'; // количество заказчиков
+            for (int i = 0; i < Manager->getCount(); i++) {
+                fout << ord[i]->getID() << '\n'; // номер заказа
+                fout << ord[i]->getName() << '\n'; // имя заказчика
+                fout << ord[i]->getPhone() << '\n'; // номер телефона заказчика
+                fout << ord[i]->getCount() << '\n'; // количество комнат в заказе
+                Product** prod = ord[i]->getItems();
+                for (int j = 0; j < ord[i]->getCount(); j++) {
+                    fout << prod[j]->getName() << endl; // название или номер комнаты
+                    fout << prod[j]->getDate() << endl; // день клининга
+                    fout << prod[j]->getArea() << endl; // площадь комнаты
+                }
+            }
+        }
+        fout.close();
+    }
+
+    // Импорт из файла "data.txt"
+    void takeFromFile(const string path, const bool start = false) {
+        ifstream fin;
+        string str, id, nm, ph, cnt;
+        string mas[100][3];
+        fin.open(path);
+
+        // проверка открытия файла
+        if (!fin.is_open()) {
+            if (start == false) {
+                cout << "File opening error!" << endl;
+            }
+        }
+        else {
+            getline(fin, str, '\n');
+            int ordersCount = stoi(str);
+            for (int i = 0; i < ordersCount; i++) {
+                getline(fin, id, '\n');
+                getline(fin, nm, '\n');
+                getline(fin, ph, '\n');
+                getline(fin, cnt, '\n');
+                int itemsCount = stoi(cnt);
+                for (int j = 0; j < itemsCount; j++) {
+                    getline(fin, mas[j][0], '\n');
+                    getline(fin, mas[j][1], '\n');
+                    getline(fin, mas[j][2], '\n');
+                }
+                Manager->newOrder(nm, ph, stoi(cnt), mas, stoi(id), 0);
+            }
+        }
+        fin.close();
+    }
+
+public:
+    void menu() {
+        // загрузка данных в файл "base.txt"
+        takeFromFile("base.txt", true);
+        do {
+            mainMenu();
+            switch (choice) {
+            case 1:
+                print();
+                cout << "Введите 0, чтобы продолжить:";
+                cin >> kg;
+                break;
+            case 2:
+                newOrderMenu();
+                break;
+            case 3:
+                delOrderMenu();
+                break;
+            case 4:
+                system("cls");
+                cout << "Все данные будут сохранены в файл \"data.txt\"" << endl;
+                cout << "Старые данные будут потеряны, если вы захотите их сохранить,\nперенести его в другой файл." << endl;
+                cout << "Введите 0, чтобы продолжить:";
+                cin >> kg;
+
+                saveToFile("data.txt");
+
+                system("cls");
+                cout << "Выполнено!" << endl;
+                cout << "Введите 0, чтобы продолжить:";
+                cin >> kg;
+                break;
+            case 5:
+                system("cls");
+                cout << "Все данные будут импортированы из файла \"data.txt\"" << endl;
+                cout << "Введите 0, чтобы продолжить:";
+                cin >> kg;
+
+                takeFromFile("data.txt");
+
+                system("cls");
+                cout << "Выполнено!" << endl;
+                cout << "Введите 0, чтобы продолжить:";
+                cin >> kg;
+                break;
+            case 0:
+                saveToFile("base.txt");
+                break;
+            }
+        } while (choice != 0);
+    }
+};
+
+int main()
+{
+    setlocale(LC_ALL, "Russian");
+    mMenu ctrl;
+    ctrl.menu();
+    return 0;
+}
